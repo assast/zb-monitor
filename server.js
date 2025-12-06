@@ -4,9 +4,14 @@ const cors = require('cors');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const { encryptData, decryptData } = require('./crypto-utils');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 加密密钥（用于加密存储的 API Token）
+const ACCOUNTS_SECRET = process.env.ACCOUNTS_SECRET;
+const ENCRYPTION_ENABLED = ACCOUNTS_SECRET && ACCOUNTS_SECRET.length === 64;
 
 app.use(cors());
 app.use(express.json());
@@ -69,7 +74,26 @@ function loadServerAccounts() {
   try {
     if (fs.existsSync(ACCOUNTS_FILE)) {
       const data = fs.readFileSync(ACCOUNTS_FILE, 'utf8');
-      return JSON.parse(data);
+      const accounts = JSON.parse(data);
+      
+      // 如果启用了加密,解密 Token
+      if (ENCRYPTION_ENABLED) {
+        return accounts.map(account => {
+          // 如果账号有加密的 Token,解密它
+          if (account.encryptedToken) {
+            try {
+              const token = decryptData(account.encryptedToken, ACCOUNTS_SECRET);
+              return { ...account, token, encryptedToken: undefined };
+            } catch (e) {
+              console.error(`❌ 解密账号 [${account.name}] 的 Token 失败:`, e.message);
+              return account;
+            }
+          }
+          return account;
+        });
+      }
+      
+      return accounts;
     }
   } catch (e) {
     console.error('❌ 读取账号文件失败:', e.message);
@@ -80,7 +104,28 @@ function loadServerAccounts() {
 // 保存账号到服务器
 function saveServerAccounts(accounts) {
   try {
-    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), 'utf8');
+    let accountsToSave = accounts;
+    
+    // 如果启用了加密,加密 Token
+    if (ENCRYPTION_ENABLED) {
+      accountsToSave = accounts.map(account => {
+        if (account.token) {
+          try {
+            const encryptedToken = encryptData(account.token, ACCOUNTS_SECRET);
+            // 保存时移除明文 token,只保存加密后的
+            const { token, ...rest } = account;
+            return { ...rest, encryptedToken };
+          } catch (e) {
+            console.error(`❌ 加密账号 [${account.name}] 的 Token 失败:`, e.message);
+            return account;
+          }
+        }
+        return account;
+      });
+      console.log('🔐 账号 Token 已加密存储');
+    }
+    
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accountsToSave, null, 2), 'utf8');
     return true;
   } catch (e) {
     console.error('❌ 保存账号文件失败:', e.message);
@@ -487,6 +532,18 @@ function getEnvAccounts() {
 }
 
 // 检查是否已设置密码
+// 检查加密密钥是否已设置
+app.get('/api/check-encryption', (req, res) => {
+  const crypto = require('crypto');
+  // 生成一个随机密钥供用户使用
+  const suggestedSecret = crypto.randomBytes(32).toString('hex');
+  
+  res.json({
+    isConfigured: ENCRYPTION_ENABLED,
+    suggestedSecret: suggestedSecret
+  });
+});
+
 app.get('/api/check-password', (req, res) => {
   const savedPassword = loadAdminPassword();
   res.json({ hasPassword: !!savedPassword });
@@ -762,6 +819,13 @@ app.get('/api/latest-version', async (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✨ Zeabur Monitor 运行在 http://0.0.0.0:${PORT}`);
+  
+  // 显示加密状态
+  if (ENCRYPTION_ENABLED) {
+    console.log(`🔐 Token 加密存储: 已启用 (AES-256-GCM)`);
+  } else {
+    console.log(`⚠️  Token 加密存储: 未启用 (建议设置 ACCOUNTS_SECRET 环境变量)`);
+  }
   
   const envAccounts = getEnvAccounts();
   const serverAccounts = loadServerAccounts();

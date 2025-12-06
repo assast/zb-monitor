@@ -442,6 +442,64 @@
 </head>
 <body>
   <div id="app">
+    <!-- 加密密钥未设置警告 -->
+    <div v-if="showEncryptionWarning" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10001;">
+      <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); max-width: 600px; width: 95%;">
+        <h2 style="text-align: center; color: #ff6b6b; margin-bottom: 15px;">⚠️ 安全配置必需</h2>
+        <p style="text-align: center; color: #666; font-size: 14px; margin-bottom: 20px;">
+          为了保护您的 API Token 安全,请先设置加密密钥
+        </p>
+        
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+          <div style="font-weight: 600; color: #856404; margin-bottom: 10px;">📋 设置步骤:</div>
+          <ol style="color: #856404; font-size: 13px; line-height: 1.8; margin: 0; padding-left: 20px;">
+            <li>复制下方生成的密钥</li>
+            <li>在服务器上创建或编辑 <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px;">.env</code> 文件</li>
+            <li>添加一行: <code style="background: #f8f9fa; padding: 2px 6px; border-radius: 4px;">ACCOUNTS_SECRET=密钥</code></li>
+            <li>保存文件并重启服务</li>
+          </ol>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; font-size: 13px; font-weight: 600; color: #666; margin-bottom: 8px;">
+            🔐 为您专属生成的加密密钥 (点击复制):
+          </label>
+          <div style="font-size: 11px; color: #28a745; margin-bottom: 8px; font-weight: 500;">
+            ✨ 此密钥由加密安全随机数生成，全球唯一，请妥善保管
+          </div>
+          <div 
+            @click="copySecret" 
+            style="background: #f8f9fa; border: 2px solid #e9ecef; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 12px; word-break: break-all; cursor: pointer; transition: all 0.2s;"
+            @mouseover="$event.target.style.borderColor='#f696c6'"
+            @mouseout="$event.target.style.borderColor='#e9ecef'"
+          >
+            {{ suggestedSecret }}
+          </div>
+          <div style="font-size: 11px; color: #999; margin-top: 5px; text-align: center;">点击上方密钥即可复制</div>
+        </div>
+        
+        <div style="background: #f8f9fa; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+          <div style="font-size: 12px; color: #666; font-family: monospace;">
+            <span style="color: #999;"># .env 文件内容示例</span><br>
+            ACCOUNTS_SECRET={{ suggestedSecret }}
+          </div>
+        </div>
+        
+        <div style="background: #d4edda; border: 1px solid #28a745; border-radius: 8px; padding: 12px; margin-bottom: 20px;">
+          <div style="font-size: 12px; color: #155724;">
+            <strong>💡 提示:</strong> 设置完成后,刷新此页面即可继续使用。密钥用于加密存储您的 API Token,请妥善保管。
+          </div>
+        </div>
+        
+        <button 
+          @click="copySecret"
+          style="width: 100%; padding: 12px; background: #f696c6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;"
+        >
+          📋 复制密钥到剪贴板
+        </button>
+      </div>
+    </div>
+    
     <!-- 首次设置密码界面 -->
     <div v-if="showSetPasswordModal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;">
       <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); max-width: 400px; width: 90%;">
@@ -958,6 +1016,9 @@
           opacity: 39,
           isSummaryWhiteMode: true,
           expandedAccounts: {},
+          // 加密密钥检查
+          showEncryptionWarning: false,
+          suggestedSecret: '',
           // 密码验证
           isAuthenticated: false,
           showLoginModal: false,
@@ -991,6 +1052,21 @@
         
         // 获取版本信息（无论是否登录都获取）
         this.fetchVersionInfo();
+        
+        // 首先检查加密密钥是否已设置
+        try {
+          const encryptionResponse = await fetch('/api/check-encryption');
+          const encryptionData = await encryptionResponse.json();
+          
+          if (!encryptionData.isConfigured) {
+            // 未设置加密密钥,显示警告
+            this.suggestedSecret = encryptionData.suggestedSecret;
+            this.showEncryptionWarning = true;
+            return; // 阻止继续,必须先设置密钥
+          }
+        } catch (error) {
+          console.error('检查加密状态失败:', error);
+        }
         
         // 检查服务器是否已设置密码
         const hasPasswordResponse = await fetch('/api/check-password');
@@ -1794,6 +1870,22 @@
           }
         },
         // 获取版本信息
+        // 复制加密密钥到剪贴板
+        async copySecret() {
+          try {
+            await navigator.clipboard.writeText(this.suggestedSecret);
+            alert('密钥已复制到剪贴板!请按照步骤设置后刷新页面。');
+          } catch (error) {
+            // 降级方案
+            const textArea = document.createElement('textarea');
+            textArea.value = this.suggestedSecret;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alert('密钥已复制到剪贴板!请按照步骤设置后刷新页面。');
+          }
+        },
         async fetchVersionInfo() {
           try {
             console.log('开始获取版本信息...');
