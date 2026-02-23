@@ -65,9 +65,10 @@ function requireAuth(req, res, next) {
 
 app.use(express.static('public'));
 
-// 数据文件路径
-const ACCOUNTS_FILE = path.join(__dirname, 'accounts.json');
-const PASSWORD_FILE = path.join(__dirname, 'password.json');
+// 数据文件路径（支持 DATA_DIR 环境变量，用于 Docker volume 持久化）
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+const ACCOUNTS_FILE = path.join(DATA_DIR, 'accounts.json');
+const PASSWORD_FILE = path.join(DATA_DIR, 'password.json');
 
 // 读取服务器存储的账号
 function loadServerAccounts() {
@@ -784,7 +785,7 @@ app.get('/api/latest-version', async (req, res) => {
   try {
     const options = {
       hostname: 'raw.githubusercontent.com',
-      path: '/jiujiu532/zeabur-monitor/main/package.json',
+      path: '/assast/zb-monitor/main/package.json',
       method: 'GET',
       timeout: 5000
     };

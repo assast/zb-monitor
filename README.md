@@ -4,21 +4,21 @@
 
 ![](https://img.shields.io/badge/Node.js-18+-green.svg)
 ![](https://img.shields.io/badge/License-MIT-blue.svg)
-![](https://img.shields.io/badge/Zeabur-Ready-blueviolet.svg)
+![](https://img.shields.io/badge/Docker-Ready-blue.svg)
 
 ## ✨ 功能特性
 
 - 🎨 **现代化 UI** - 粉色主题 + 玻璃拟态效果 + 动漫背景
 - 💰 **实时余额监控** - 显示每月免费额度剩余（$X.XX / $5.00）
-- ***项目费用追踪** - 每个项目的实时费用统计
+- 📊 **项目费用追踪** - 每个项目的实时费用统计
 - ✏️ **项目快速改名** - 点击铅笔图标即可重命名项目
 - 🌐 **域名显示** - 显示项目的所有域名，点击直接访问
 - 🐳 **服务状态监控** - 显示所有服务的运行状态和资源配置
--  ***多账号支持** - 同时管理多个 Zeabur 账号
--  ***自动刷新** - 每 90 秒自动更新数据
+- 👥 **多账号支持** - 同时管理多个 Zeabur 账号
+- 🔄 **自动刷新** - 每 90 秒自动更新数据
 - 🎚️ **透明度调节** - 可调节卡片透明度（0-100%）
 - 📱 **响应式设计** - 完美适配各种屏幕尺寸
-- ***密码保护** - 管理员密码验证，保护账号安全
+- 🔑 **密码保护** - 管理员密码验证，保护账号安全
 - 💾 **服务器存储** - 账号数据存储在服务器，多设备自动同步
 - ⏸️ **服务控制** - 暂停、启动、重启服务
 - 📋 **查看日志** - 实时查看服务运行日志
@@ -27,7 +27,7 @@
 
 ### 前置要求
 
-- Node.js 18+
+- Docker 和 Docker Compose（容器部署）或 Node.js 18+（本地部署）
 - Zeabur 账号和 API Token
 
 ### 获取 Zeabur API Token
@@ -38,12 +38,83 @@
 4. 点击 **Create Token**
 5. 复制生成的 Token（格式：`sk-xxxxxxxxxxxxxxxx`）
 
+---
+
+### 🐳 Docker Compose 部署（推荐）
+
+```bash
+# 1. 创建项目目录
+mkdir zb-monitor && cd zb-monitor
+
+# 2. 下载 docker-compose.yml
+curl -O https://raw.githubusercontent.com/assast/zb-monitor/main/docker-compose.yml
+
+# 3. 创建环境变量文件
+cat > .env << EOF
+PORT=3000
+
+# 可选：账号 Token 加密密钥（64位十六进制）
+# ACCOUNTS_SECRET=
+
+# 可选：预配置账号（格式: 账号名:token,账号名:token）
+# ACCOUNTS=
+EOF
+
+# 4. 创建数据目录
+mkdir -p data
+
+# 5. 启动服务
+docker compose up -d
+
+# 6. 查看日志
+docker compose logs -f
+```
+
+访问 `http://你的服务器IP:3000` 即可使用。
+
+#### 更新镜像
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+#### 停止服务
+
+```bash
+docker compose down
+```
+
+---
+
+### 🐳 Docker Run 部署
+
+```bash
+# 创建数据目录
+mkdir -p ./data
+
+# 运行容器
+docker run -d \
+  --name zb-monitor \
+  --restart unless-stopped \
+  -p 3000:3000 \
+  -v ./data:/app/data \
+  -e PORT=3000 \
+  -e DATA_DIR=/app/data \
+  ghcr.io/assast/zb-monitor:latest
+
+# 查看日志
+docker logs -f zb-monitor
+```
+
+---
+
 ### 本地部署
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/jiujiu532/zeabur-monitor.git
-cd zeabur-monitor
+git clone https://github.com/assast/zb-monitor.git
+cd zb-monitor
 
 # 2. 安装依赖
 npm install
@@ -55,7 +126,7 @@ npm start
 # 打开浏览器访问：http://localhost:3000
 ```
 
-### Zeabur 部署（推荐）
+### Zeabur 部署
 
 详细部署步骤请查看 [DEPLOY.md](./DEPLOY.md)
 
@@ -100,33 +171,41 @@ npm start
 - **前端**：Vue.js 3 (CDN)
 - **API**：Zeabur GraphQL API
 - **样式**：原生 CSS（玻璃拟态效果）
+- **容器**：Docker + GitHub Actions CI/CD
 
 ## 📁 项目结构
 
 ```
-zeabur-monitor/
+zb-monitor/
 ├── public/
 │   ├── index.html      # 前端页面
 │   ├── bg.png          # 背景图片
 │   └── favicon.png     # 网站图标
+├── .github/
+│   └── workflows/
+│       └── docker-publish.yml  # CI/CD 自动构建
 ├── server.js           # 后端服务
+├── crypto-utils.js     # 加密工具
 ├── package.json        # 项目配置
+├── Dockerfile          # Docker 构建文件
+├── docker-compose.yml  # Docker Compose 配置
 ├── .env.example        # 环境变量示例
 ├── .gitignore          # Git 忽略规则
 ├── zbpack.json         # Zeabur 配置
 ├── README.md           # 项目说明
-└── DEPLOY.md           # 部署指南
+└── DEPLOY.md           # Zeabur 部署指南
 ```
 
 ## 🔒 安全说明
 
 ### 密码保护
 - 首次使用需要设置管理员密码（至少 6 位）
-- 密码存储在服务器的 `password.json` 文件中
+- 密码存储在 `password.json` 文件中
 - 登录后 10 天内自动保持登录状态
 
 ### API Token 安全
-- Token 存储在服务器的 `accounts.json` 文件中
+- Token 存储在 `accounts.json` 文件中
+- 支持 AES-256-GCM 加密存储（设置 `ACCOUNTS_SECRET` 环境变量）
 - 输入时自动打码显示（`●●●●●●`）
 - 不会暴露在前端代码或浏览器中
 
@@ -138,51 +217,39 @@ zeabur-monitor/
 
 这些文件已在 `.gitignore` 中配置。
 
-## 🎨 自定义
-
-### 更换背景图片
-替换 `public/bg.png` 为你喜欢的图片
-
-### 调整透明度
-使用页面上的透明度滑块调节
-
-### 修改主题色
-在 `public/index.html` 中搜索 `#f696c6` 并替换为你喜欢的颜色
-
-## 🔄 多设备同步
-
-账号信息存储在服务器上，所有设备自动同步！
-
-- 在电脑上添加账号 → 手机、平板立即可见
-- 在手机上删除账号 → 所有设备同步删除
-- 无需任何配置，开箱即用
-
 ## 🛠️ 开发
 
-### 环境变量（可选）
+### 环境变量
 
 创建 `.env` 文件：
 ```env
 PORT=3000
-ACCOUNTS=账号1:token1,账号2:token2
+# 账号 Token 加密密钥（64位十六进制，运行 node generate-secret.js 生成）
+# ACCOUNTS_SECRET=
+# 预配置账号
+# ACCOUNTS=账号1:token1,账号2:token2
+# Docker 部署时数据目录（本地开发无需设置）
+# DATA_DIR=/app/data
 ```
 
 ### API 端点
 
-- `GET /` - 前端页面
-- `POST /api/check-password` - 检查是否已设置密码
-- `POST /api/set-password` - 设置管理员密码
-- `POST /api/verify-password` - 验证密码
-- `POST /api/temp-accounts` - 获取账号信息
-- `POST /api/temp-projects` - 获取项目信息
-- `POST /api/validate-account` - 验证账号
-- `GET /api/server-accounts` - 获取服务器存储的账号
-- `POST /api/server-accounts` - 保存账号到服务器
-- `DELETE /api/server-accounts/:index` - 删除账号
-- `POST /api/project/rename` - 重命名项目
-- `POST /api/service/pause` - 暂停服务
-- `POST /api/service/restart` - 重启服务
-- `POST /api/service/logs` - 获取服务日志
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/` | 前端页面 |
+| `GET` | `/api/check-password` | 检查是否已设置密码 |
+| `POST` | `/api/set-password` | 设置管理员密码 |
+| `POST` | `/api/verify-password` | 验证密码 |
+| `POST` | `/api/temp-accounts` | 获取账号信息 |
+| `POST` | `/api/temp-projects` | 获取项目信息 |
+| `POST` | `/api/validate-account` | 验证账号 |
+| `GET` | `/api/server-accounts` | 获取服务器存储的账号 |
+| `POST` | `/api/server-accounts` | 保存账号到服务器 |
+| `DELETE` | `/api/server-accounts/:index` | 删除账号 |
+| `POST` | `/api/project/rename` | 重命名项目 |
+| `POST` | `/api/service/pause` | 暂停服务 |
+| `POST` | `/api/service/restart` | 重启服务 |
+| `POST` | `/api/service/logs` | 获取服务日志 |
 
 ## 🤝 贡献
 
@@ -192,16 +259,6 @@ ACCOUNTS=账号1:token1,账号2:token2
 
 MIT License - 自由使用和修改
 
-## ⭐ Star History
-
-如果这个项目对你有帮助，请给个 Star ⭐
-
-## 🙏 致谢
-
-- [Zeabur](https://zeabur.com) - 提供优秀的云服务平台
-- [Vue.js](https://vuejs.org) - 渐进式 JavaScript 框架
-- [Express](https://expressjs.com) - 快速、开放、极简的 Web 框架
-
 ---
 
-Made with ❤️ by [jiujiu532](https://github.com/jiujiu532)
+Made with ❤️ by [assast](https://github.com/assast)

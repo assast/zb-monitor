@@ -28,3 +28,6 @@ Thumbs.db
 # 临时文件
 *.tmp
 .cache/
+
+# Docker 数据目录
+data/

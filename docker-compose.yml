@@ -1,0 +1,18 @@
+services:
+  zb-monitor:
+    image: ghcr.io/assast/zb-monitor:latest
+    container_name: zb-monitor
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=3000
+      - DATA_DIR=/app/data
+      # Optional: 账号 Token 加密密钥（64位十六进制）
+      # - ACCOUNTS_SECRET=
+      # Optional: 预配置账号（格式: 账号名:token,账号名:token）
+      # - ACCOUNTS=
+    env_file:
+      - .env

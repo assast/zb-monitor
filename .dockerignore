@@ -1,0 +1,17 @@
+node_modules
+.git
+.gitignore
+.env
+.env.example
+accounts.json
+password.json
+DEPLOY.md
+README.md
+zbpack.json
+*.log
+.DS_Store
+.vscode
+.idea
+.kiro
+*.tmp
+.cache
